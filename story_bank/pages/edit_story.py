@@ -36,7 +36,7 @@ def render(user: SessionUser, svc: StoryService, story_id: Optional[str]) -> Non
 
     available_tags = svc.get_available_tags()
 
-    with st.form("edit_story_form"):
+    with st.form("edit_story_form", enter_to_submit=False):
         title = st.text_input("Story Title *", value=story.title)
 
         st.markdown("---")

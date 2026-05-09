@@ -45,25 +45,45 @@ _NAV_CSS = """
     text-transform: uppercase;
     letter-spacing: 0.1em;
     color: #818CF8;
-    margin: 16px 0 8px 0;
+    margin: 16px 0 4px 0;
 }
-.nav-link-btn {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 9px 12px;
+
+/* Style st.page_link items in sidebar */
+[data-testid="stSidebar"] [data-testid="stPageLink"] a,
+[data-testid="stSidebar"] [data-testid="stPageLink"] span {
+    color: #C7D2FE !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    text-decoration: none !important;
+}
+[data-testid="stSidebar"] [data-testid="stPageLink"]:hover a,
+[data-testid="stSidebar"] [data-testid="stPageLink"]:hover span {
+    color: #FFFFFF !important;
+}
+[data-testid="stSidebar"] [data-testid="stPageLink"] {
+    border-radius: 8px !important;
+    padding: 2px 0 !important;
+    transition: background 0.15s !important;
+}
+[data-testid="stSidebar"] [data-testid="stPageLink"]:hover {
+    background: rgba(255,255,255,0.08) !important;
+}
+
+/* Logout link style */
+.nav-logout-link {
+    display: block;
+    padding: 8px 12px;
     border-radius: 8px;
-    cursor: pointer;
-    margin-bottom: 2px;
-    color: #C7D2FE;
+    color: #F87171 !important;
     font-size: 14px;
     font-weight: 500;
+    cursor: pointer;
+    margin-top: 4px;
     transition: background 0.15s;
     text-decoration: none;
 }
-.nav-link-btn:hover {
-    background: rgba(255,255,255,0.1);
-    color: #FFFFFF;
+.nav-logout-link:hover {
+    background: rgba(248,113,113,0.12);
 }
 </style>
 """
@@ -89,14 +109,13 @@ def render_sidebar(user: SessionUser) -> None:
         unsafe_allow_html=True,
     )
 
-    # Navigation links
+    # Navigation links — st.page_link renders as proper anchor tags, not buttons
     st.sidebar.markdown('<p class="nav-section-label">Apps</p>', unsafe_allow_html=True)
     for icon, label, page in _NAV_ITEMS:
-        if st.sidebar.button(f"{icon}  {label}", key=f"nav_{label}", use_container_width=True):
-            st.switch_page(page)
+        st.sidebar.page_link(page, label=label, icon=icon)
 
-    # Logout
+    # Logout (needs session action so stays as a button, styled minimally)
     st.sidebar.markdown("---")
-    if st.sidebar.button("🚪  Sign Out", key="nav_logout", use_container_width=True):
+    if st.sidebar.button("Sign Out", key="nav_logout", use_container_width=False):
         clear_session()
         st.switch_page("pages/1_Login.py")

@@ -33,7 +33,7 @@ svc = AuthService()
 
 # ── Sign In tab ───────────────────────────────────────────────────────────────
 with tab_signin:
-    with st.form("signin_form"):
+    with st.form("signin_form", enter_to_submit=False):
         email = st.text_input("Email address", placeholder="you@example.com")
         password = st.text_input("Password", type="password")
         submitted = st.form_submit_button("Sign In", use_container_width=True)
@@ -52,7 +52,7 @@ with tab_signin:
 
 # ── Register tab ──────────────────────────────────────────────────────────────
 with tab_register:
-    with st.form("register_form"):
+    with st.form("register_form", enter_to_submit=False):
         reg_display_name = st.text_input("Display Name", placeholder="Jane Smith")
         reg_email = st.text_input("Email address", placeholder="you@example.com", key="reg_email")
         reg_password = st.text_input("Password", type="password", key="reg_pw",

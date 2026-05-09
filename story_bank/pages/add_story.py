@@ -24,7 +24,7 @@ def render(user: SessionUser, svc: StoryService) -> None:
 
     available_tags = svc.get_available_tags()
 
-    with st.form("add_story_form", clear_on_submit=True):
+    with st.form("add_story_form", clear_on_submit=True, enter_to_submit=False):
         title = st.text_input("Story Title *", placeholder="e.g., Led migration of monolith to microservices")
 
         st.markdown("---")

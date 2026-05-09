@@ -25,7 +25,7 @@ svc = AuthService()
 
 section_header("Profile")
 
-with st.form("update_profile_form"):
+with st.form("update_profile_form", enter_to_submit=False):
     new_display_name = st.text_input(
         "Display Name",
         value=user.display_name or "",

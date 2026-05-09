@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from typing import Optional
 
-from google.cloud.firestore import Client, Query
+from google.cloud.firestore import Client
 
 from story_bank.models import Story, StoryCreate, StoryUpdate
 
@@ -25,11 +25,7 @@ class StoryRepository:
         return Story(id=doc_ref.id, **payload)
 
     def get_by_user(self, user_id: str) -> list[Story]:
-        docs = (
-            self._col.where("user_id", "==", user_id)
-            .order_by("updated_at", direction=Query.DESCENDING)
-            .stream()
-        )
+        docs = self._col.where("user_id", "==", user_id).stream()
         return [Story(id=d.id, **d.to_dict()) for d in docs]
 
     def get_by_id(self, story_id: str, user_id: str) -> Optional[Story]:
