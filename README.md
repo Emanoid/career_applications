@@ -14,6 +14,7 @@ A growing collection of Streamlit web apps to support career progression. Each a
    - [Deploying to Streamlit Community Cloud](#deploying-to-streamlit-community-cloud)
 3. [Apps](#apps)
    - [Story Bank](#story-bank)
+   - [Question Bank](#question-bank)
 4. [Adding a New App](#adding-a-new-app)
 5. [Development Notes](#development-notes)
 
@@ -23,12 +24,14 @@ A growing collection of Streamlit web apps to support career progression. Each a
 
 | App | Description | Status |
 |-----|-------------|--------|
-| Story Bank | STAR-format behavioral interview stories | ✅ Live |
+| Story Bank | STAR-format behavioral interview stories with question association | ✅ Live |
+| Question Bank | Shared pool of behavioral interview questions, searchable by tag or keyword | ✅ Live |
 
 All apps share:
 - Firebase Authentication (email/password) with in-app registration
 - Firestore database (per-user data isolation enforced at the service layer)
 - Inter font + consistent design system (dark sidebar, indigo primary color)
+- Dark / light mode toggle in the sidebar (🌙 / ☀️)
 
 ---
 
@@ -110,21 +113,21 @@ You need two credentials:
 
 ### Story Bank
 
-**What it does:** A searchable, tag-filtered bank of behavioral interview stories in STAR format. Before an interview, pull up your relevant stories by tag and refresh your memory — no more drawing blanks under pressure.
+**What it does:** A searchable, tag-filtered bank of behavioral interview stories in STAR format. Each story can be linked to one or more behavioral interview questions from the shared Question Bank. Before an interview, pull up your relevant stories by tag or question and refresh your memory.
 
 **How to use it:**
 
-1. **Add a story** — Click "➕ Add Story" at the top right of the page. Fill in the title, all four STAR fields, and any relevant tags. Add context (company, location) if helpful.
-2. **Associate questions** — Below the story form, search your question bank and select which behavioral questions this story answers. You can also create a new question inline.
-3. **Browse stories** — The main view lists all your stories sorted newest-first by default. Each story expands to show the full STAR breakdown and any associated questions.
-4. **Search** — Type in the search box to find stories by any text across title, situation, task, action, result, company, or location. Search is case-insensitive and matches substrings. Wildcards are supported: `*` matches any sequence of characters, `_` matches any single character (e.g. `lead*design`, `manag_r`).
-5. **Filter by tag** — Use the tag multiselect below the search box to narrow stories by theme. Combines with search.
-6. **Sort by date** — Toggle between "Newest first" and "Oldest first" using the sort dropdown next to the search box.
-7. **Custom tags** — Any tag you type in the "Add new tags" field is saved and will appear as an option in future stories automatically.
-8. **Edit / Delete** — Each story has Edit and Delete buttons. Deletion requires a confirmation step.
-9. **Question Bank** — Click "❓ Questions" to manage the shared pool of behavioral interview questions. Search, filter by tag, add, edit, or delete questions independently of stories.
+1. **Add a story** — Click "➕ Add Story". Fill in the title, all four STAR fields, optional company/location, and tags.
+2. **Link questions** — Below the story form, type to search the Question Bank and select which behavioral questions this story answers. You can also create a new question inline and it will be immediately selected.
+3. **Browse stories** — The main list shows all stories sorted newest-first. Expand any story to see the full STAR breakdown and its linked questions.
+4. **Search** — The search box matches against title, situation, task, action, result, company, and location. Case-insensitive substring match. Wildcards: `*` = any sequence, `_` = any single character (e.g. `lead*design`, `manag_r`).
+5. **Filter by tag** — The tag multiselect below the search box narrows results; combines with keyword search.
+6. **Sort** — Toggle "Newest first" / "Oldest first" via the sort dropdown.
+7. **Custom tags** — Tags typed in the "Add new tags" field are saved and available in future stories automatically.
+8. **Edit / Delete** — Each expanded story card has Edit and Delete buttons. Deletion requires confirmation.
 
 **STAR Method:**
+
 | Field | Prompt |
 |-------|--------|
 | **S**ituation | Where were you? What was the context or challenge? |
@@ -135,34 +138,62 @@ You need two credentials:
 **Default tags:**
 `Conflict Resolution`, `Cross-team Collaboration`, `Customer Focus`, `Delivering Under Pressure`, `Handling Failure`, `Influencing Without Authority`, `Leading System Design`, `Mentoring`, `Navigating Ambiguity`, `Process Improvement`, `Stakeholder Management`, `Technical Leadership`, `Trouble with Manager`
 
-**Data stored in Firestore:**
+---
 
-`stories` collection (per-user):
+### Question Bank
+
+**What it does:** A shared pool of behavioral interview questions (e.g. "Tell me about a time you…") that all users draw from. Questions are tagged and fully searchable. Any story can be linked to one or more questions.
+
+**How to use it:**
+
+1. **Open the Question Bank** — Click "❓ Questions" in the Story Bank header.
+2. **Search questions** — Type in the keyword search box; the list filters instantly.
+3. **Filter by tag** — Use the tag multiselect to narrow by theme.
+4. **Add a question** — Click "➕ Add", fill in the question text, then use the tag search field to find and select existing tags. Type in "Create new tags" to add tags that don't exist yet.
+5. **Edit a question** — Expand a question card and click Edit. The inline editor has its own live tag search.
+6. **Delete a question** — Expand a question card, click Delete, and confirm.
+
+**Note:** Questions are global — they are shared across all users of the app, not per-account. This reflects the nature of behavioral questions (they are universal, not personal).
+
+---
+
+## Firestore Collections
+
+### `stories` (per-user)
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `user_id` | string | Firebase Auth UID |
+| `user_id` | string | Firebase Auth UID — enforces per-user isolation |
 | `title` | string | Story title |
 | `situation` | string | S in STAR |
 | `task` | string | T in STAR |
 | `action` | string | A in STAR |
 | `result` | string | R in STAR |
 | `tags` | array | Tag labels |
-| `question_ids` | array | IDs of associated questions from the question bank |
-| `company` | string? | Company where event occurred |
+| `question_ids` | array | IDs of linked questions from the Question Bank |
+| `company` | string? | Company where the event occurred |
 | `location` | string? | Geographic location |
 | `created_at` | timestamp | Auto-set on creation |
 | `updated_at` | timestamp | Auto-updated on edit |
 
-`questions` collection (global, shared across all users):
+### `questions` (global, shared)
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `text` | string | The behavioral interview question text |
-| `tags` | array | Tag labels (same tag vocabulary as stories) |
-| `created_by` | string | UID of user who created the question |
+| `text` | string | The behavioral interview question |
+| `tags` | array | Tag labels (same vocabulary as story tags) |
+| `created_by` | string | UID of the user who created the question |
 | `created_at` | timestamp | Auto-set on creation |
 | `updated_at` | timestamp | Auto-updated on edit |
+
+### `users` (per-user)
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `email` | string | User's email |
+| `display_name` | string? | Display name shown in the sidebar |
+| `created_at` | timestamp | Account creation time |
+| `updated_at` | timestamp | Last profile update |
 
 ---
 
@@ -216,7 +247,7 @@ _NAV_ITEMS = [
 ]
 ```
 
-**Step 5** — Add a `### New App` section to this README under `## Apps`.
+**Step 5** — Add a section to this README under `## Apps`.
 
 ---
 
@@ -228,32 +259,32 @@ career_applications/
 ├── main.py                  # Entry point — redirects to login or story bank
 ├── pages/                   # Streamlit multi-page routing
 │   ├── 1_Login.py           # Sign in + register
-│   ├── 2_Story_Bank.py      # Story bank hub
+│   ├── 2_Story_Bank.py      # Story bank hub + question bank routing
 │   └── 3_Settings.py        # Account settings
 ├── shared/                  # Shared infrastructure — imported by all apps
 │   ├── auth/                # Firebase Auth service, session guard, models
 │   ├── db/                  # Firestore client singleton
-│   ├── ui/                  # Styles (CSS), components, nav
+│   ├── ui/                  # Styles (CSS + dark/light tokens), components, nav
 │   └── config.py            # Settings (reads st.secrets → env vars → .env)
 ├── questions/               # Global question bank module
 │   ├── models.py            # Question, QuestionCreate, QuestionUpdate
 │   ├── repository.py        # Firestore CRUD (global `questions` collection)
-│   └── service.py           # QuestionService(user_id) — search, create, etc.
+│   └── service.py           # QuestionService — search, CRUD, tag aggregation
 ├── story_bank/              # Story bank app package
-│   ├── models.py            # Pydantic models (Story now carries question_ids)
+│   ├── models.py            # Pydantic models — Story carries question_ids
 │   ├── repository.py        # Firestore CRUD
-│   ├── service.py           # Business logic (scoped to user_id)
-│   └── pages/               # Streamlit view functions (incl. questions_page.py)
+│   ├── service.py           # Business logic scoped to user_id
+│   └── pages/               # list_stories, add_story, edit_story, questions_page
 └── .streamlit/
-    ├── config.toml          # Streamlit theme
+    ├── config.toml          # Theme (base = "light", primaryColor = indigo)
     └── secrets.toml         # Local secrets (gitignored)
 ```
 
 **Key design rules:**
-- Apps never import from each other — only from `shared/`
-- `XxxService(user_id)` is always scoped to one user at construction time
-- `SessionUser` stored in `st.session_state` — never contains a password or hash
-- `require_auth()` called at the top of every protected page
-- `inject_global_css()` called at the top of every page
+- `questions/` is global — `QuestionService` is not user-scoped for reads (all users share one pool)
+- `XxxService(user_id)` for per-user services — cross-user access is a construction-time error
+- Session state staging key pattern (`*_pending`) used when a widget key must be updated after the widget has already rendered in a given script run
+- `SessionUser` in `st.session_state` — never contains a password or hash
+- `require_auth()` at the top of every protected page; `inject_global_css()` at the top of every page
+- Dark/light mode driven by `st.session_state["dark_mode"]` — `inject_global_css()` injects the correct `:root` token block on every render; toggled via sidebar button
 - `README.md` updated after every code change
-- All work on branch `feature/filing-reminders` — user manually merges to main
