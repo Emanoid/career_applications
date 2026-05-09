@@ -40,6 +40,7 @@ class StoryRepository:
     def update(self, story_id: str, data: StoryUpdate, user_id: str) -> Optional[Story]:
         if self.get_by_id(story_id, user_id) is None:
             return None
+        # None means "don't touch this field"; empty list [] means "clear it" — both work here
         updates = {k: v for k, v in data.model_dump().items() if v is not None}
         updates["updated_at"] = datetime.now(timezone.utc)
         self._col.document(story_id).update(updates)

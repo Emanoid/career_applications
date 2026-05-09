@@ -1,5 +1,6 @@
 import streamlit as st
 
+from questions.service import QuestionService
 from shared.auth.models import SessionUser
 from shared.ui.components import (
     empty_state,
@@ -16,11 +17,17 @@ _SORT_OPTIONS = {
 }
 
 
-def render(user: SessionUser, svc: StoryService) -> None:
-    # ── Header row: title + Add button ──────────────────────────────────────
-    col_title, col_add = st.columns([5, 1])
+def render(user: SessionUser, svc: StoryService, q_svc: QuestionService) -> None:
+    # ── Header row: title + action buttons ──────────────────────────────────
+    col_title, col_qbank, col_add = st.columns([5, 1, 1])
     with col_title:
         page_header("Story Bank", subtitle="Your STAR-format stories, ready for any interview.")
+    with col_qbank:
+        st.markdown("<div style='padding-top:14px'>", unsafe_allow_html=True)
+        if st.button("❓ Questions", key="sb_qbank_btn", use_container_width=True, type="secondary"):
+            st.session_state["story_bank_view"] = "questions"
+            st.rerun()
+        st.markdown("</div>", unsafe_allow_html=True)
     with col_add:
         st.markdown("<div style='padding-top:14px'>", unsafe_allow_html=True)
         if st.button("➕ Add Story", key="sb_add_btn", use_container_width=True):
@@ -76,9 +83,13 @@ def render(user: SessionUser, svc: StoryService) -> None:
     if selected_tags:
         parts.append(f"tagged: {', '.join(selected_tags)}")
     st.markdown(
-        f"<p style='font-size:13px;color:#6B7280;margin:8px 0 12px'>{' · '.join(parts)}</p>",
+        f"<p style='font-size:13px;color:var(--color-text-muted);margin:8px 0 12px'>{' · '.join(parts)}</p>",
         unsafe_allow_html=True,
     )
+
+    # Pre-fetch all questions in one pass to avoid N×M reads
+    all_q_ids = list({qid for s in stories for qid in (s.question_ids or [])})
+    q_by_id = {q.id: q for q in q_svc.get_by_ids(all_q_ids)} if all_q_ids else {}
 
     for story in stories:
         with st.expander(story.title, expanded=False):
@@ -90,6 +101,20 @@ def render(user: SessionUser, svc: StoryService) -> None:
             star_section("A — Action", story.action)
             star_section("R — Result", story.result)
             st.markdown("</div>", unsafe_allow_html=True)
+
+            # Related questions
+            story_questions = [q_by_id[qid] for qid in (story.question_ids or []) if qid in q_by_id]
+            if story_questions:
+                st.markdown('<p class="related-q-label">Related Questions</p>', unsafe_allow_html=True)
+                for q in story_questions:
+                    tag_badges = "".join(
+                        f'<span class="related-q-tag">{t}</span>' for t in q.tags
+                    )
+                    st.markdown(
+                        f'<p class="related-q-item">'
+                        f'<span class="related-q-bullet">•</span>{q.text}{tag_badges}</p>',
+                        unsafe_allow_html=True,
+                    )
 
             col_edit, col_delete, col_spacer = st.columns([1, 1, 5])
             with col_edit:

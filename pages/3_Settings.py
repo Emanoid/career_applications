@@ -50,6 +50,6 @@ if submitted:
 
 st.markdown("---")
 st.markdown(
-    f"<p style='font-size:13px;color:#6B7280'>Signed in as <strong>{user.email}</strong></p>",
+    f"<p style='font-size:13px;color:var(--color-text-muted)'>Signed in as <strong>{user.email}</strong></p>",
     unsafe_allow_html=True,
 )

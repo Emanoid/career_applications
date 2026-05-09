@@ -29,6 +29,7 @@ class StoryCreate(BaseModel):
     tags: list[str] = Field(default_factory=list)
     company: Optional[str] = Field(None, max_length=200)
     location: Optional[str] = Field(None, max_length=200)
+    question_ids: list[str] = Field(default_factory=list)
 
 
 class StoryUpdate(BaseModel):
@@ -40,6 +41,7 @@ class StoryUpdate(BaseModel):
     tags: Optional[list[str]] = None
     company: Optional[str] = None
     location: Optional[str] = None
+    question_ids: Optional[list[str]] = None
 
 
 class Story(StoryCreate):
