@@ -114,8 +114,15 @@ def render_sidebar(user: SessionUser) -> None:
     for icon, label, page in _NAV_ITEMS:
         st.sidebar.page_link(page, label=label, icon=icon)
 
-    # Logout (needs session action so stays as a button, styled minimally)
+    # Theme toggle
     st.sidebar.markdown("---")
+    is_dark = st.session_state.get("dark_mode", False)
+    theme_label = "☀️  Light mode" if is_dark else "🌙  Dark mode"
+    if st.sidebar.button(theme_label, key="theme_toggle", use_container_width=False):
+        st.session_state["dark_mode"] = not is_dark
+        st.rerun()
+
+    # Logout
     if st.sidebar.button("Sign Out", key="nav_logout", use_container_width=False):
         clear_session()
         st.switch_page("pages/1_Login.py")

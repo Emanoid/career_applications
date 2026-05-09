@@ -115,12 +115,14 @@ You need two credentials:
 **How to use it:**
 
 1. **Add a story** — Click "➕ Add Story" at the top right of the page. Fill in the title, all four STAR fields, and any relevant tags. Add context (company, location) if helpful.
-2. **Browse stories** — The main view lists all your stories sorted newest-first by default. Each story expands to show the full STAR breakdown.
-3. **Search** — Type in the search box to find stories by any text across title, situation, task, action, result, company, or location. Search is case-insensitive and matches substrings. Wildcards are supported: `*` matches any sequence of characters, `_` matches any single character (e.g. `lead*design`, `manag_r`).
-4. **Filter by tag** — Use the tag multiselect below the search box to narrow stories by theme. Combines with search.
-5. **Sort by date** — Toggle between "Newest first" and "Oldest first" using the sort dropdown next to the search box.
-6. **Custom tags** — Any tag you type in the "Add new tags" field is saved and will appear as an option in future stories automatically.
-7. **Edit / Delete** — Each story has Edit and Delete buttons. Deletion requires a confirmation step.
+2. **Associate questions** — Below the story form, search your question bank and select which behavioral questions this story answers. You can also create a new question inline.
+3. **Browse stories** — The main view lists all your stories sorted newest-first by default. Each story expands to show the full STAR breakdown and any associated questions.
+4. **Search** — Type in the search box to find stories by any text across title, situation, task, action, result, company, or location. Search is case-insensitive and matches substrings. Wildcards are supported: `*` matches any sequence of characters, `_` matches any single character (e.g. `lead*design`, `manag_r`).
+5. **Filter by tag** — Use the tag multiselect below the search box to narrow stories by theme. Combines with search.
+6. **Sort by date** — Toggle between "Newest first" and "Oldest first" using the sort dropdown next to the search box.
+7. **Custom tags** — Any tag you type in the "Add new tags" field is saved and will appear as an option in future stories automatically.
+8. **Edit / Delete** — Each story has Edit and Delete buttons. Deletion requires a confirmation step.
+9. **Question Bank** — Click "❓ Questions" to manage the shared pool of behavioral interview questions. Search, filter by tag, add, edit, or delete questions independently of stories.
 
 **STAR Method:**
 | Field | Prompt |
@@ -133,7 +135,9 @@ You need two credentials:
 **Default tags:**
 `Conflict Resolution`, `Cross-team Collaboration`, `Customer Focus`, `Delivering Under Pressure`, `Handling Failure`, `Influencing Without Authority`, `Leading System Design`, `Mentoring`, `Navigating Ambiguity`, `Process Improvement`, `Stakeholder Management`, `Technical Leadership`, `Trouble with Manager`
 
-**Data stored in Firestore (`stories` collection):**
+**Data stored in Firestore:**
+
+`stories` collection (per-user):
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -144,8 +148,19 @@ You need two credentials:
 | `action` | string | A in STAR |
 | `result` | string | R in STAR |
 | `tags` | array | Tag labels |
+| `question_ids` | array | IDs of associated questions from the question bank |
 | `company` | string? | Company where event occurred |
 | `location` | string? | Geographic location |
+| `created_at` | timestamp | Auto-set on creation |
+| `updated_at` | timestamp | Auto-updated on edit |
+
+`questions` collection (global, shared across all users):
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `text` | string | The behavioral interview question text |
+| `tags` | array | Tag labels (same tag vocabulary as stories) |
+| `created_by` | string | UID of user who created the question |
 | `created_at` | timestamp | Auto-set on creation |
 | `updated_at` | timestamp | Auto-updated on edit |
 
@@ -220,11 +235,15 @@ career_applications/
 │   ├── db/                  # Firestore client singleton
 │   ├── ui/                  # Styles (CSS), components, nav
 │   └── config.py            # Settings (reads st.secrets → env vars → .env)
+├── questions/               # Global question bank module
+│   ├── models.py            # Question, QuestionCreate, QuestionUpdate
+│   ├── repository.py        # Firestore CRUD (global `questions` collection)
+│   └── service.py           # QuestionService(user_id) — search, create, etc.
 ├── story_bank/              # Story bank app package
-│   ├── models.py            # Pydantic models
+│   ├── models.py            # Pydantic models (Story now carries question_ids)
 │   ├── repository.py        # Firestore CRUD
 │   ├── service.py           # Business logic (scoped to user_id)
-│   └── pages/               # Streamlit view functions
+│   └── pages/               # Streamlit view functions (incl. questions_page.py)
 └── .streamlit/
     ├── config.toml          # Streamlit theme
     └── secrets.toml         # Local secrets (gitignored)
