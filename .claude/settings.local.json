@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch",
+      "WebSearch",
+      "ReadFile",
+      "WriteFile",
+      "EditFile",
+      "Grep",
+      "Glob",
+      "ListDirectory",
+      "RunCommand",
+      "ExecuteCommand",
+      "Shell",
+      "Bash"
+    ]
+  }
+}
