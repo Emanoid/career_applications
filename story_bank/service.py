@@ -31,6 +31,7 @@ class StoryService:
     def get_all(
         self,
         tag_filters: Optional[list[str]] = None,
+        question_filters: Optional[list[str]] = None,
         search_text: Optional[str] = None,
         newest_first: bool = True,
     ) -> list[Story]:
@@ -38,6 +39,12 @@ class StoryService:
 
         if tag_filters:
             stories = [s for s in stories if any(t in s.tags for t in tag_filters)]
+
+        if question_filters:
+            stories = [
+                s for s in stories
+                if any(qid in (s.question_ids or []) for qid in question_filters)
+            ]
 
         if search_text and search_text.strip():
             pattern = _compile_search(search_text)
