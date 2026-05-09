@@ -67,10 +67,15 @@ You need two credentials:
    cp .streamlit/secrets.toml.example .streamlit/secrets.toml
    ```
 
-2. Edit `.streamlit/secrets.toml` and fill in your Firebase credentials:
+2. Edit `.streamlit/secrets.toml` and fill in your Firebase credentials.
+   > **Important:** use triple single-quotes (`'''`) for `credentials_json` — regular single quotes break TOML parsing for multi-line strings.
    ```toml
    [firebase]
-   credentials_json = '{"type":"service_account","project_id":"YOUR_PROJECT",...}'
+   credentials_json = '''{
+     "type": "service_account",
+     "project_id": "YOUR_PROJECT_ID",
+     ...
+   }'''
    web_api_key = "AIzaSy..."
    ```
 
@@ -83,18 +88,21 @@ You need two credentials:
 
 ### Deploying to Streamlit Community Cloud
 
-1. Push this repository to GitHub (the `.streamlit/secrets.toml` is gitignored — your credentials stay local).
+1. Push this repository to GitHub (`.streamlit/secrets.toml` is gitignored — credentials never leave your machine).
 
 2. Go to [share.streamlit.io](https://share.streamlit.io), connect your GitHub repo, and set the main file to `main.py`.
 
-3. In the app's **Settings → Secrets**, paste the same content you have in your local `secrets.toml`:
+3. In the app's **Settings → Secrets**, paste the same `[firebase]` block you have locally (triple single-quotes included):
    ```toml
    [firebase]
-   credentials_json = '{"type":"service_account",...}'
+   credentials_json = '''{
+     "type": "service_account",
+     ...
+   }'''
    web_api_key = "AIzaSy..."
    ```
 
-4. Deploy. The app will be live at your assigned `share.streamlit.io` URL.
+4. Deploy. The app reads from `st.secrets` in both environments — no `.env` file or environment variables needed.
 
 ---
 
@@ -106,11 +114,13 @@ You need two credentials:
 
 **How to use it:**
 
-1. **Add a story** — Click "Add New Story" in the sidebar. Fill in the title, all four STAR fields, and any relevant tags. Add context (company, location) if helpful.
-2. **Browse stories** — The main view lists all your stories newest-first. Each story expands to show the full STAR breakdown.
-3. **Filter by tag** — Use the "Filter by tags" multiselect in the sidebar to narrow down stories by theme. Useful for interview prep ("show me all my Conflict Resolution stories").
-4. **Custom tags** — Any tag you type in the "Add new tags" field is saved and will appear in the tag picker for future stories.
-5. **Edit / Delete** — Each story has Edit and Delete buttons. Deletion requires a confirmation step.
+1. **Add a story** — Click "➕ Add Story" at the top right of the page. Fill in the title, all four STAR fields, and any relevant tags. Add context (company, location) if helpful.
+2. **Browse stories** — The main view lists all your stories sorted newest-first by default. Each story expands to show the full STAR breakdown.
+3. **Search** — Type in the search box to find stories by any text across title, situation, task, action, result, company, or location. Search is case-insensitive and matches substrings. Wildcards are supported: `*` matches any sequence of characters, `_` matches any single character (e.g. `lead*design`, `manag_r`).
+4. **Filter by tag** — Use the tag multiselect below the search box to narrow stories by theme. Combines with search.
+5. **Sort by date** — Toggle between "Newest first" and "Oldest first" using the sort dropdown next to the search box.
+6. **Custom tags** — Any tag you type in the "Add new tags" field is saved and will appear as an option in future stories automatically.
+7. **Edit / Delete** — Each story has Edit and Delete buttons. Deletion requires a confirmation step.
 
 **STAR Method:**
 | Field | Prompt |
