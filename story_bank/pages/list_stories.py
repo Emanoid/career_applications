@@ -59,17 +59,29 @@ def render(user: SessionUser, svc: StoryService, q_svc: QuestionService) -> None
         label_visibility="collapsed",
     )
 
+    # ── Question filter ──────────────────────────────────────────────────────
+    all_questions = q_svc.get_all()
+    q_map = {q.id: q.text for q in all_questions}
+    selected_q_ids = st.multiselect(
+        "Filter by questions",
+        options=list(q_map.keys()),
+        format_func=lambda qid: (q_map[qid][:80] + "…") if len(q_map.get(qid, "")) > 80 else q_map.get(qid, qid),
+        placeholder="Filter by linked questions — select one or more…",
+        label_visibility="collapsed",
+    )
+
     # ── Story list ───────────────────────────────────────────────────────────
     newest_first = _SORT_OPTIONS[sort_label]
     stories = svc.get_all(
         tag_filters=selected_tags if selected_tags else None,
+        question_filters=selected_q_ids if selected_q_ids else None,
         search_text=search_text if search_text.strip() else None,
         newest_first=newest_first,
     )
 
     if not stories:
-        if search_text.strip() or selected_tags:
-            empty_state("No stories match your search.", icon="🔍")
+        if search_text.strip() or selected_tags or selected_q_ids:
+            empty_state("No stories match your filters.", icon="🔍")
         else:
             empty_state(
                 "No stories yet. Hit '➕ Add Story' to create your first one.",
@@ -82,6 +94,8 @@ def render(user: SessionUser, svc: StoryService, q_svc: QuestionService) -> None
         parts.append(f'matching "{search_text.strip()}"')
     if selected_tags:
         parts.append(f"tagged: {', '.join(selected_tags)}")
+    if selected_q_ids:
+        parts.append(f"linked to {len(selected_q_ids)} {'question' if len(selected_q_ids) == 1 else 'questions'}")
     st.markdown(
         f"<p style='font-size:13px;color:var(--color-text-muted);margin:8px 0 12px'>{' · '.join(parts)}</p>",
         unsafe_allow_html=True,
