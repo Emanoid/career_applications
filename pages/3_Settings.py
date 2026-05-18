@@ -1,3 +1,5 @@
+import html
+
 import streamlit as st
 
 st.set_page_config(
@@ -9,6 +11,7 @@ st.set_page_config(
 
 from shared.auth.guard import require_auth, set_session_user
 from shared.auth.models import SessionUser
+from shared.auth.roles import ADMIN
 from shared.auth.service import AuthService
 from shared.ui.components import page_header, section_header
 from shared.ui.nav import render_sidebar
@@ -41,6 +44,7 @@ if submitted:
             email=user.email,
             display_name=new_display_name.strip(),
             id_token=user.id_token,
+            role=user.role,
         )
         set_session_user(updated_user)
         st.success("Display name updated.")
@@ -50,6 +54,17 @@ if submitted:
 
 st.markdown("---")
 st.markdown(
-    f"<p style='font-size:13px;color:var(--color-text-muted)'>Signed in as <strong>{user.email}</strong></p>",
+    f"<p style='font-size:13px;color:var(--color-text-muted)'>"
+    f"Signed in as <strong>{html.escape(user.email)}</strong> · role: <strong>{user.role}</strong></p>",
     unsafe_allow_html=True,
 )
+
+# ── Admin: User Accounts & Roles ─────────────────────────────────────────────
+if user.role == ADMIN:
+    section_header("User Accounts & Roles")
+    st.caption("Read-only — all user accounts and their roles.")
+    st.dataframe(
+        svc.list_accounts(),
+        use_container_width=True,
+        hide_index=True,
+    )

@@ -1,3 +1,5 @@
+import html
+
 import streamlit as st
 
 from questions.models import QuestionCreate, QuestionUpdate
@@ -130,24 +132,25 @@ def render(user: SessionUser, q_svc: QuestionService) -> None:
     for q in questions:
         with st.expander(q.text[:120] + ("…" if len(q.text) > 120 else ""), expanded=False):
             st.markdown(
-                f"<p style='font-size:15px;line-height:1.6;color:var(--color-text)'>{q.text}</p>",
+                f"<p style='font-size:15px;line-height:1.6;color:var(--color-text)'>{html.escape(q.text)}</p>",
                 unsafe_allow_html=True,
             )
             tags_row(q.tags)
 
-            col_edit, col_delete, _ = st.columns([1, 1, 5])
-            with col_edit:
-                if st.button("Edit", key=f"qedit_{q.id}", use_container_width=True):
-                    # Seed edit state
-                    st.session_state[f"edit_q_text_{q.id}"] = q.text
-                    st.session_state[f"edit_q_selected_tags_{q.id}"] = [t for t in q.tags if t in available_tags]
-                    st.session_state[f"edit_q_new_tag_{q.id}"] = ", ".join(t for t in q.tags if t not in available_tags)
-                    st.session_state[f"editing_q_{q.id}"] = True
-                    st.rerun()
-            with col_delete:
-                if st.button("Delete", key=f"qdel_{q.id}", use_container_width=True, type="secondary"):
-                    st.session_state[f"confirm_del_q_{q.id}"] = True
-                    st.rerun()
+            if q_svc.can_edit(q):
+                col_edit, col_delete, _ = st.columns([1, 1, 5])
+                with col_edit:
+                    if st.button("Edit", key=f"qedit_{q.id}", use_container_width=True):
+                        # Seed edit state
+                        st.session_state[f"edit_q_text_{q.id}"] = q.text
+                        st.session_state[f"edit_q_selected_tags_{q.id}"] = [t for t in q.tags if t in available_tags]
+                        st.session_state[f"edit_q_new_tag_{q.id}"] = ", ".join(t for t in q.tags if t not in available_tags)
+                        st.session_state[f"editing_q_{q.id}"] = True
+                        st.rerun()
+                with col_delete:
+                    if st.button("Delete", key=f"qdel_{q.id}", use_container_width=True, type="secondary"):
+                        st.session_state[f"confirm_del_q_{q.id}"] = True
+                        st.rerun()
 
             # ── Inline edit (no form — live tag search) ──────────────────────
             if st.session_state.get(f"editing_q_{q.id}"):

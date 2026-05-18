@@ -1,3 +1,5 @@
+import html
+
 import streamlit as st
 
 from shared.auth.guard import clear_session
@@ -38,6 +40,23 @@ _NAV_CSS = """
     font-size: 12px;
     color: #A5B4FC;
     margin: 0;
+}
+.nav-role-badge {
+    display: inline-block;
+    margin-top: 8px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+}
+.nav-role-admin {
+    background: #F59E0B;
+    color: #1F2937;
+}
+.nav-role-editor {
+    background: rgba(255,255,255,0.15);
+    color: #C7D2FE;
 }
 .nav-section-label {
     font-size: 10px;
@@ -99,12 +118,14 @@ def render_sidebar(user: SessionUser) -> None:
         unsafe_allow_html=True,
     )
 
-    # User info
+    # User info — escape user-controlled values before HTML interpolation.
     display = user.display_name or user.email.split("@")[0]
+    role_class = "nav-role-admin" if user.role == "admin" else "nav-role-editor"
     st.sidebar.markdown(
         f'<div class="nav-user-section">'
-        f'<p class="nav-user-name">{display}</p>'
-        f'<p class="nav-user-email">{user.email}</p>'
+        f'<p class="nav-user-name">{html.escape(display)}</p>'
+        f'<p class="nav-user-email">{html.escape(user.email)}</p>'
+        f'<span class="nav-role-badge {role_class}">{user.role.upper()}</span>'
         f"</div>",
         unsafe_allow_html=True,
     )

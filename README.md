@@ -12,11 +12,14 @@ A growing collection of Streamlit web apps to support career progression. Each a
    - [Firebase Configuration](#firebase-configuration)
    - [Local Development](#local-development)
    - [Deploying to Streamlit Community Cloud](#deploying-to-streamlit-community-cloud)
+   - [Production Security](#production-security)
 3. [Apps](#apps)
    - [Story Bank](#story-bank)
    - [Question Bank](#question-bank)
-4. [Adding a New App](#adding-a-new-app)
-5. [Development Notes](#development-notes)
+4. [Roles & Access Control](#roles--access-control)
+5. [Firestore Collections](#firestore-collections)
+6. [Adding a New App](#adding-a-new-app)
+7. [Development Notes](#development-notes)
 
 ---
 
@@ -29,6 +32,7 @@ A growing collection of Streamlit web apps to support career progression. Each a
 
 All apps share:
 - Firebase Authentication (email/password) with in-app registration
+- Role-based access control — `admin` / `editor` roles (see [Roles & Access Control](#roles--access-control))
 - Firestore database (per-user data isolation enforced at the service layer)
 - Inter font + consistent design system (dark sidebar, indigo primary color)
 - Dark / light mode toggle in the sidebar (🌙 / ☀️)
@@ -107,6 +111,23 @@ You need two credentials:
 
 4. Deploy. The app reads from `st.secrets` in both environments — no `.env` file or environment variables needed.
 
+### Production security
+
+After deploying, harden the Firebase project:
+
+1. **Deploy the deny-all Firestore rules.** `firestore.rules` in this repo denies
+   all client access. Deploy it with the Firebase CLI
+   (`firebase deploy --only firestore:rules`) or paste its contents into Firebase
+   Console → Firestore Database → Rules. The app is unaffected — the Admin SDK
+   bypasses rules — but no client SDK can then reach the database directly.
+2. **Confirm HTTPS.** Login passwords travel browser → server. Streamlit
+   Community Cloud serves over HTTPS by default; verify any custom domain does too.
+3. **Self-signup toggle.** The in-app "Create Account" tab is controlled in
+   Firebase Console → **Authentication → Settings → User actions → "Enable create
+   (sign-up)"**. Leaving it enabled keeps public registration working; new
+   accounts receive the `editor` role. Uncheck it to make accounts
+   admin-provisioned only.
+
 ---
 
 ## Apps
@@ -153,7 +174,56 @@ You need two credentials:
 5. **Edit a question** — Expand a question card and click Edit. The inline editor has its own live tag search.
 6. **Delete a question** — Expand a question card, click Delete, and confirm.
 
-**Note:** Questions are global — they are shared across all users of the app, not per-account. This reflects the nature of behavioral questions (they are universal, not personal).
+**Note:** Questions are global — they are shared across all users of the app, not per-account. This reflects the nature of behavioral questions (they are universal, not personal). Anyone may create a question, but a question can be edited or deleted only by its creator (or an admin).
+
+---
+
+## Roles & Access Control
+
+Every account has a **role**, stored as a Firebase Auth **custom claim** — a
+Google-signed JWT claim that can be set only with the Admin SDK, so a user
+cannot forge or change their own role. At login the ID token is verified
+server-side (`firebase_admin.auth.verify_id_token`) and the `role` claim is read
+from the verified token. A missing or unrecognized claim defaults to `editor`
+(least privilege).
+
+| Role | Access |
+|------|--------|
+| `admin` | Full access — sees and manages every user's stories and any question. |
+| `editor` | Restricted — sees and manages only their own stories; edits/deletes only questions they created. |
+
+- **Stories** are owned per-user via `user_id`. Editors see only their own; admins see all.
+- **Questions** are a shared global pool: everyone reads all questions, but an editor can edit/delete only questions they created (`created_by`); admins can modify any.
+- Authorization is enforced entirely in the **service layer** (`StoryService`, `QuestionService`). The Admin SDK bypasses Firestore security rules, so application code is the only enforcement point.
+
+### Managing roles
+
+New accounts are `editor` by default. Change a role with the CLI:
+
+```bash
+python scripts/grant_role.py user@example.com admin
+python scripts/grant_role.py user@example.com editor
+```
+
+The script sets the `role` custom claim, preserving any other claims. **The user
+must sign out and back in** for the change to take effect — the role is read from
+a freshly issued token.
+
+Admins can view every account (email / role / uid) in **Settings → User Accounts
+& Roles** (read-only).
+
+### Backfilling ownership
+
+If older rows exist without an owner, stamp them onto an admin account:
+
+```bash
+python scripts/grant_role.py admin@example.com --backfill
+python scripts/grant_role.py admin@example.com admin --backfill   # also grants admin
+```
+
+This is idempotent — it assigns `created_by` (questions) and `user_id` (stories)
+only on rows where the field is missing. `--backfill` may be combined with a
+role argument to do both in one run.
 
 ---
 
@@ -182,7 +252,7 @@ You need two credentials:
 |-------|------|-------------|
 | `text` | string | The behavioral interview question |
 | `tags` | array | Tag labels (same vocabulary as story tags) |
-| `created_by` | string | UID of the user who created the question |
+| `created_by` | string | UID of the creator — write-ownership key (editors edit/delete only their own) |
 | `created_at` | timestamp | Auto-set on creation |
 | `updated_at` | timestamp | Auto-updated on edit |
 
@@ -207,7 +277,7 @@ new_app/
 ├── __init__.py
 ├── models.py        # Pydantic models (YourCreate, YourUpdate, Your)
 ├── repository.py    # Firestore CRUD — YourRepository(db)
-├── service.py       # YourService(user_id) — scoped to one user
+├── service.py       # YourService(user) — enforces role-based access
 └── pages/
     ├── __init__.py
     ├── list.py      # render(user, svc) function
@@ -231,7 +301,7 @@ inject_global_css()
 user = require_auth()
 render_sidebar(user)
 
-svc = NewService(user.uid)
+svc = NewService(user)
 view = st.session_state.get("new_app_view", "list")
 # route to correct view...
 ```
@@ -262,7 +332,7 @@ career_applications/
 │   ├── 2_Story_Bank.py      # Story bank hub + question bank routing
 │   └── 3_Settings.py        # Account settings
 ├── shared/                  # Shared infrastructure — imported by all apps
-│   ├── auth/                # Firebase Auth service, session guard, models
+│   ├── auth/                # Firebase Auth service, session guard, roles, models
 │   ├── db/                  # Firestore client singleton
 │   ├── ui/                  # Styles (CSS + dark/light tokens), components, nav
 │   └── config.py            # Settings (reads st.secrets → env vars → .env)
@@ -273,18 +343,22 @@ career_applications/
 ├── story_bank/              # Story bank app package
 │   ├── models.py            # Pydantic models — Story carries question_ids
 │   ├── repository.py        # Firestore CRUD
-│   ├── service.py           # Business logic scoped to user_id
+│   ├── service.py           # Business logic — role-aware (admin sees all)
 │   └── pages/               # list_stories, add_story, edit_story, questions_page
+├── scripts/
+│   └── grant_role.py        # CLI — set role custom claims + --backfill ownership
+├── firestore.rules          # Deny-all client rules (Admin SDK bypasses them)
 └── .streamlit/
     ├── config.toml          # Theme (base = "light", primaryColor = indigo)
     └── secrets.toml         # Local secrets (gitignored)
 ```
 
 **Key design rules:**
-- `questions/` is global — `QuestionService` is not user-scoped for reads (all users share one pool)
-- `XxxService(user_id)` for per-user services — cross-user access is a construction-time error
+- `questions/` is global — `QuestionService` reads are not user-scoped (all users share one pool); writes are scoped by `created_by`
+- `XxxService(user)` — services take the verified `SessionUser` and enforce role-based access (admins see all, editors see their own); `update`/`delete` raise `PermissionError` for a non-owning editor
+- Repositories are plain CRUD with explicit writable-field whitelists; server-managed fields (`user_id`, `created_by`, timestamps) are never accepted from caller data
 - Session state staging key pattern (`*_pending`) used when a widget key must be updated after the widget has already rendered in a given script run
-- `SessionUser` in `st.session_state` — never contains a password or hash
-- `require_auth()` at the top of every protected page; `inject_global_css()` at the top of every page
+- `SessionUser` in `st.session_state` — carries the verified `role`; never contains a password or hash
+- `require_auth()` at the top of every protected page — pass `require_auth(required_role="admin")` to gate a page to admins; `inject_global_css()` at the top of every page
 - Dark/light mode driven by `st.session_state["dark_mode"]` — `inject_global_css()` injects the correct `:root` token block on every render; toggled via sidebar button
 - `README.md` updated after every code change

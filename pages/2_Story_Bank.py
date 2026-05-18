@@ -19,8 +19,8 @@ inject_global_css()
 user = require_auth()
 render_sidebar(user)
 
-svc = StoryService(user.uid)
-q_svc = QuestionService(user.uid)
+svc = StoryService(user)
+q_svc = QuestionService(user)
 
 view = st.session_state.get("story_bank_view", "list")
 

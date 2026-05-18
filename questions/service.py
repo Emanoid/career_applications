@@ -3,14 +3,41 @@ from typing import Optional
 
 from questions.models import Question, QuestionCreate, QuestionUpdate
 from questions.repository import QuestionRepository
+from shared.auth.models import SessionUser
+from shared.auth.roles import ADMIN
 from shared.db.client import get_db
 from story_bank.models import DEFAULT_TAGS
 
 
 class QuestionService:
-    def __init__(self, user_id: str) -> None:
-        self._user_id = user_id
+    """Authorization boundary for the shared question bank.
+
+    Reads are global — every user sees the whole pool (questions are universal,
+    not personal). Writes are scoped: an editor may edit/delete only questions
+    they created; an admin may modify any.
+    """
+
+    def __init__(self, user: SessionUser) -> None:
+        self._user = user
         self._repo = QuestionRepository(get_db())
+
+    @property
+    def _is_admin(self) -> bool:
+        return self._user.role == ADMIN
+
+    def can_edit(self, question: Question) -> bool:
+        """True if the current user may edit/delete this question (for UI gating)."""
+        return self._is_admin or question.created_by == self._user.uid
+
+    def _require_owner(self, question_id: str) -> None:
+        """Raise PermissionError if an editor tries to modify a question they didn't create."""
+        if self._is_admin:
+            return
+        question = self._repo.get_by_id(question_id)
+        if question is None:
+            return  # nonexistent — repo update/delete reports not-found
+        if question.created_by != self._user.uid:
+            raise PermissionError("You do not have permission to modify this question.")
 
     def get_all(
         self,
@@ -32,12 +59,15 @@ class QuestionService:
         return self._repo.get_by_id(question_id)
 
     def create(self, data: QuestionCreate) -> Question:
-        return self._repo.create(data, self._user_id)
+        # created_by is always the creator — never taken from caller input.
+        return self._repo.create(data, self._user.uid)
 
     def update(self, question_id: str, data: QuestionUpdate) -> Optional[Question]:
+        self._require_owner(question_id)
         return self._repo.update(question_id, data)
 
     def delete(self, question_id: str) -> bool:
+        self._require_owner(question_id)
         return self._repo.delete(question_id)
 
     def get_available_tags(self) -> list[str]:

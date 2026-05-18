@@ -7,15 +7,23 @@ from questions.models import Question, QuestionCreate, QuestionUpdate
 
 COLLECTION = "questions"
 
+# Fields a caller may write. Server-managed fields (created_by, created_at,
+# updated_at) are NOT in this set — they are set by the repository, never
+# accepted from caller-supplied data.
+_WRITABLE_FIELDS = frozenset(QuestionCreate.model_fields)
+
 
 class QuestionRepository:
+    """Plain Firestore CRUD. Authorization is enforced in QuestionService."""
+
     def __init__(self, db: Client) -> None:
         self._col = db.collection(COLLECTION)
 
     def create(self, data: QuestionCreate, created_by: str) -> Question:
         now = datetime.now(timezone.utc)
+        fields = {k: v for k, v in data.model_dump().items() if k in _WRITABLE_FIELDS}
         payload = {
-            **data.model_dump(),
+            **fields,
             "created_by": created_by,
             "created_at": now,
             "updated_at": now,
@@ -46,7 +54,10 @@ class QuestionRepository:
         doc = self._col.document(question_id).get()
         if not doc.exists:
             return None
-        updates = {k: v for k, v in data.model_dump().items() if v is not None}
+        updates = {
+            k: v for k, v in data.model_dump().items()
+            if v is not None and k in _WRITABLE_FIELDS
+        }
         updates["updated_at"] = datetime.now(timezone.utc)
         self._col.document(question_id).update(updates)
         return self.get_by_id(question_id)
