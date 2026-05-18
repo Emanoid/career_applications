@@ -1,3 +1,5 @@
+import html
+
 import streamlit as st
 
 from questions.service import QuestionService
@@ -91,9 +93,9 @@ def render(user: SessionUser, svc: StoryService, q_svc: QuestionService) -> None
 
     parts = [f"{len(stories)} {'story' if len(stories) == 1 else 'stories'}"]
     if search_text.strip():
-        parts.append(f'matching "{search_text.strip()}"')
+        parts.append(f'matching "{html.escape(search_text.strip())}"')
     if selected_tags:
-        parts.append(f"tagged: {', '.join(selected_tags)}")
+        parts.append(f"tagged: {html.escape(', '.join(selected_tags))}")
     if selected_q_ids:
         parts.append(f"linked to {len(selected_q_ids)} {'question' if len(selected_q_ids) == 1 else 'questions'}")
     st.markdown(
@@ -122,11 +124,11 @@ def render(user: SessionUser, svc: StoryService, q_svc: QuestionService) -> None
                 st.markdown('<p class="related-q-label">Related Questions</p>', unsafe_allow_html=True)
                 for q in story_questions:
                     tag_badges = "".join(
-                        f'<span class="related-q-tag">{t}</span>' for t in q.tags
+                        f'<span class="related-q-tag">{html.escape(t)}</span>' for t in q.tags
                     )
                     st.markdown(
                         f'<p class="related-q-item">'
-                        f'<span class="related-q-bullet">•</span>{q.text}{tag_badges}</p>',
+                        f'<span class="related-q-bullet">•</span>{html.escape(q.text)}{tag_badges}</p>',
                         unsafe_allow_html=True,
                     )
 

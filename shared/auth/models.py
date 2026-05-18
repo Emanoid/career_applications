@@ -3,6 +3,8 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
+from shared.auth.roles import DEFAULT_ROLE
+
 
 class UserProfile(BaseModel):
     """Firestore document at users/{firebase_uid}. Does not store credentials."""
@@ -15,12 +17,17 @@ class UserProfile(BaseModel):
 
 
 class SessionUser(BaseModel):
-    """Stored in st.session_state. Never contains a password or password hash."""
+    """Stored in st.session_state. Never contains a password or password hash.
+
+    `role` is derived from the verified ID token's custom claim, not from user
+    input — see AuthService.login. Defaults to editor (least privilege).
+    """
 
     uid: str
     email: str
     display_name: Optional[str] = None
     id_token: str
+    role: str = DEFAULT_ROLE
 
 
 class RegisterRequest(BaseModel):
